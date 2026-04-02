@@ -665,7 +665,7 @@ function MessageBubble({
 
   return (
     <div className="flex justify-start">
-      <div className="max-w-[90%] bg-white/5 border border-white/10 rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-slate-200 leading-relaxed">
+      <div className="max-w-[90%] bg-white rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-800 leading-relaxed shadow-sm">
         <MarkdownContent content={msg.content} />
       </div>
     </div>
@@ -684,7 +684,7 @@ function MarkdownContent({ content }: { content: string }) {
       elements.push(
         <h3
           key={i}
-          className="text-base font-bold text-white mt-3 mb-1"
+          className="text-base font-bold text-gray-900 mt-3 mb-1"
         >
           {renderInline(line.slice(4))}
         </h3>
@@ -693,7 +693,7 @@ function MarkdownContent({ content }: { content: string }) {
       elements.push(
         <h2
           key={i}
-          className="text-lg font-bold text-white mt-4 mb-1"
+          className="text-lg font-bold text-gray-900 mt-4 mb-1"
         >
           {renderInline(line.slice(3))}
         </h2>
@@ -702,7 +702,7 @@ function MarkdownContent({ content }: { content: string }) {
       elements.push(
         <h1
           key={i}
-          className="text-xl font-bold text-white mt-4 mb-2"
+          className="text-xl font-bold text-gray-900 mt-4 mb-2"
         >
           {renderInline(line.slice(2))}
         </h1>
@@ -721,7 +721,7 @@ function MarkdownContent({ content }: { content: string }) {
       elements.push(
         <ul
           key={"ul-" + i}
-          className="list-disc list-inside space-y-0.5 my-1 text-slate-300"
+          className="list-disc list-inside space-y-0.5 my-1 text-gray-700"
         >
           {listItems}
         </ul>
@@ -740,7 +740,7 @@ function MarkdownContent({ content }: { content: string }) {
       elements.push(
         <ol
           key={"ol-" + i}
-          className="list-decimal list-inside space-y-0.5 my-1 text-slate-300"
+          className="list-decimal list-inside space-y-0.5 my-1 text-gray-700"
         >
           {listItems}
         </ol>
@@ -767,7 +767,7 @@ function renderInline(text: string): React.ReactNode {
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
-        <strong key={i} className="text-white font-semibold">
+        <strong key={i} className="text-gray-900 font-semibold">
           {part.slice(2, -2)}
         </strong>
       );
