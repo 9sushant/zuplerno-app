@@ -554,6 +554,7 @@ export const NCERT_CHAPTERS: NCERTData = {
       "एषा अस्ति स्वर्णभूमि:",
       "लालनगीतम्",
     ],
+    "Hindi (Pankhuri — Best Publication)": [],
   },
 
   "Class 8": {
