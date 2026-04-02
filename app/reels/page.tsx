@@ -125,142 +125,140 @@ export default function ReelsPage() {
 
   const reel = reels[index];
 
+  // ── Shared overlay content (used in both mobile + desktop card) ──
+  const TopBar = (
+    <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 pt-4 pb-6"
+      style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%)" }}>
+      <Link href="/" className="text-white/80 hover:text-white text-sm font-medium">← Home</Link>
+      <span className="text-white font-bold text-base tracking-wide">Study Reels</span>
+      <div className="flex items-center gap-3">
+        <Link href="/reels/liked" className="text-red-400 hover:text-red-300 text-sm font-medium flex items-center gap-1">
+          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+          Liked
+        </Link>
+        <Link href="/reels/upload" className="text-white/80 hover:text-white text-sm font-medium">+ Upload</Link>
+      </div>
+    </div>
+  );
+
+  const BottomInfo = (
+    <div
+      className="absolute bottom-0 left-0 right-0 z-20 px-4 pb-5 pt-16"
+      style={{ background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)" }}
+    >
+      <div className="flex items-center gap-2.5 mb-2">
+        <div
+          className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white text-sm"
+          style={{ background: subjectColor(reel.subject) }}
+        >
+          {reel.subject.charAt(0)}
+        </div>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-white font-semibold text-sm truncate">
+            {reel.subject.replace(/\s+/g, "_").toLowerCase()}
+          </span>
+          <span
+            className="text-white text-xs font-bold px-3 py-0.5 rounded-full flex-shrink-0"
+            style={{ border: "1.5px solid rgba(255,255,255,0.9)" }}
+          >
+            Follow
+          </span>
+        </div>
+        <button
+          onClick={() => setMuted((m) => !m)}
+          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+        >
+          {muted ? (
+            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+            </svg>
+          ) : (
+            <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+            </svg>
+          )}
+        </button>
+      </div>
+      <p className="text-white font-semibold text-sm leading-snug mb-1">{reel.title}</p>
+      {reel.description && (
+        <p className="text-white/70 text-xs leading-relaxed line-clamp-2">{reel.description}</p>
+      )}
+      <div className="flex flex-wrap gap-1 mt-2">
+        <span className="text-xs text-white/60">#{reel.class.replace("Class ", "class")}</span>
+        <span className="text-xs text-white/60">#{reel.subject.toLowerCase().replace(/\s+/g, "")}</span>
+        {reel.chapter && (
+          <span className="text-xs text-white/60">#{reel.chapter.split(":")[0].trim().toLowerCase().replace(/\s+/g, "")}</span>
+        )}
+      </div>
+    </div>
+  );
+
+  const RightButtons = ({ insideCard }: { insideCard: boolean }) => (
+    <div
+      className={insideCard
+        ? "absolute right-3 bottom-32 z-30 flex flex-col items-center gap-5"
+        : "flex flex-col items-center gap-6"}
+    >
+      <ActionButtons reel={reel} />
+      <div className="flex flex-col items-center gap-3 mt-2">
+        <button
+          onClick={() => navigate("up")}
+          disabled={index === 0}
+          className="w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer"
+          style={{ background: "rgba(255,255,255,0.12)", opacity: index === 0 ? 0.3 : 1 }}
+        >
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+          </svg>
+        </button>
+        <span className="text-white/40 text-xs font-medium">{index + 1}/{reels.length}</span>
+        <button
+          onClick={() => navigate("down")}
+          disabled={index === reels.length - 1}
+          className="w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer"
+          style={{ background: "rgba(255,255,255,0.12)", opacity: index === reels.length - 1 ? 0.3 : 1 }}
+        >
+          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div
-      className="flex items-center justify-center h-screen w-screen overflow-hidden"
-      style={{ background: "#0f0f0f" }}
+      className="h-screen w-screen overflow-hidden bg-black"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* ── Desktop: centered phone-frame layout ── */}
-      <div className="flex items-center gap-4">
+      {/* ── Mobile: true full-screen ── */}
+      <div className="md:hidden relative w-full h-full">
+        <ReelMedia reel={reel} animDir={animDir} muted={muted} />
+        {TopBar}
+        {BottomInfo}
+        <RightButtons insideCard={true} />
+      </div>
 
-        {/* Video card */}
+      {/* ── Desktop: centered phone-frame layout ── */}
+      <div className="hidden md:flex items-center justify-center h-full gap-4" style={{ background: "#0f0f0f" }}>
         <div
           className="relative overflow-hidden flex-shrink-0"
           style={{
             width: "min(390px, 56vw)",
-            height: "min(693px, calc(56vw * 16 / 9), 95vh)",
+            height: "min(693px, 95vh)",
             borderRadius: "16px",
             background: "#000",
           }}
         >
-          <ReelMedia
-            reel={reel}
-            animDir={animDir}
-            muted={muted}
-          />
-
-          {/* Top bar: Home + Upload */}
-          <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 pt-4 pb-6"
-            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%)" }}>
-            <Link href="/" className="text-white/80 hover:text-white text-sm font-medium">
-              ← Home
-            </Link>
-            <span className="text-white font-bold text-base tracking-wide">Study Reels</span>
-            <div className="flex items-center gap-3">
-              <Link href="/reels/liked" className="text-red-400 hover:text-red-300 text-sm font-medium flex items-center gap-1">
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                </svg>
-                Liked
-              </Link>
-              <Link href="/reels/upload" className="text-white/80 hover:text-white text-sm font-medium">
-                + Upload
-              </Link>
-            </div>
-          </div>
-
-          {/* Bottom creator info + description */}
-          <div
-            className="absolute bottom-0 left-0 right-0 z-20 px-4 pb-5 pt-16"
-            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)" }}
-          >
-            {/* Creator row */}
-            <div className="flex items-center gap-2.5 mb-2">
-              <div
-                className="w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white text-sm"
-                style={{ background: subjectColor(reel.subject) }}
-              >
-                {reel.subject.charAt(0)}
-              </div>
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className="text-white font-semibold text-sm truncate">
-                  {reel.subject.replace(/\s+/g, "_").toLowerCase()}
-                </span>
-                <span
-                  className="text-white text-xs font-bold px-3 py-0.5 rounded-full flex-shrink-0"
-                  style={{ border: "1.5px solid rgba(255,255,255,0.9)" }}
-                >
-                  Follow
-                </span>
-              </div>
-              {/* Mute toggle */}
-              <button
-                onClick={() => setMuted((m) => !m)}
-                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 cursor-pointer"
-                style={{ background: "rgba(0,0,0,0.5)" }}
-              >
-                {muted ? (
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-                  </svg>
-                )}
-              </button>
-            </div>
-
-            {/* Title */}
-            <p className="text-white font-semibold text-sm leading-snug mb-1">{reel.title}</p>
-
-            {/* Description */}
-            {reel.description && (
-              <p className="text-white/70 text-xs leading-relaxed line-clamp-2">{reel.description}</p>
-            )}
-
-            {/* Tags */}
-            <div className="flex flex-wrap gap-1 mt-2">
-              <span className="text-xs text-white/60">#{reel.class.replace("Class ", "class")}</span>
-              <span className="text-xs text-white/60">#{reel.subject.toLowerCase().replace(/\s+/g, "")}</span>
-              {reel.chapter && (
-                <span className="text-xs text-white/60">#{reel.chapter.split(":")[0].trim().toLowerCase().replace(/\s+/g, "")}</span>
-              )}
-            </div>
-          </div>
+          <ReelMedia reel={reel} animDir={animDir} muted={muted} />
+          {TopBar}
+          {BottomInfo}
         </div>
-
-        {/* ── Right action buttons ── */}
-        <div className="flex flex-col items-center gap-6">
-          <ActionButtons reel={reel} />
-
-          {/* Up / Down nav */}
-          <div className="flex flex-col items-center gap-3 mt-2">
-            <button
-              onClick={() => navigate("up")}
-              disabled={index === 0}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer"
-              style={{ background: "rgba(255,255,255,0.12)", opacity: index === 0 ? 0.3 : 1 }}
-            >
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-              </svg>
-            </button>
-            <span className="text-white/40 text-xs font-medium">{index + 1}/{reels.length}</span>
-            <button
-              onClick={() => navigate("down")}
-              disabled={index === reels.length - 1}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer"
-              style={{ background: "rgba(255,255,255,0.12)", opacity: index === reels.length - 1 ? 0.3 : 1 }}
-            >
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-        </div>
+        <RightButtons insideCard={false} />
       </div>
     </div>
   );
