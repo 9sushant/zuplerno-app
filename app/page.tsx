@@ -175,6 +175,40 @@ function HomePage({
           </button>
         )}
 
+        {/* Study Buddy — students only */}
+        {!isTeacher && (
+          <Link
+            href="/study-buddy"
+            className="group bg-black/20 border border-white/20 hover:bg-black/30 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
+          >
+            <div className="text-4xl mb-4">🤖</div>
+            <h2 className="text-xl font-semibold text-white mb-2">Study Buddy</h2>
+            <p className="text-white/70 text-sm leading-relaxed">
+              AI tutor with 4 modes — get concepts explained, take a quiz, solve problems step-by-step, or do a quick revision.
+            </p>
+            <div className="mt-4 text-white font-medium text-sm group-hover:translate-x-1 transition-transform">
+              Start studying →
+            </div>
+          </Link>
+        )}
+
+        {/* Question Paper — teachers only */}
+        {isTeacher && (
+          <Link
+            href="/question-paper"
+            className="group bg-black/20 border border-white/20 hover:bg-black/30 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
+          >
+            <div className="text-4xl mb-4">📝</div>
+            <h2 className="text-xl font-semibold text-white mb-2">Question Paper</h2>
+            <p className="text-white/70 text-sm leading-relaxed">
+              Generate CBSE-standard question papers with MCQs, short and long answers — complete with an answer key.
+            </p>
+            <div className="mt-4 text-white font-medium text-sm group-hover:translate-x-1 transition-transform">
+              Create paper →
+            </div>
+          </Link>
+        )}
+
         <Link
           href="/reels"
           className="group md:col-span-2 bg-black/20 border border-white/20 hover:bg-black/30 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex items-center gap-6"
