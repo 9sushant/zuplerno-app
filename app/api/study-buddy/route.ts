@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
+import { checkAndIncrementUsage } from "@/lib/rate-limit";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -98,6 +99,17 @@ Always refer to NCERT content, be encouraging, and end explanations with a pract
 
 export async function POST(req: NextRequest) {
   try {
+    const uid = req.cookies.get("ds_uid")?.value;
+    if (uid) {
+      const rl = await checkAndIncrementUsage(uid);
+      if (!rl.ok) {
+        return new Response(
+          JSON.stringify({ error: `Daily limit reached. Students can make ${rl.limit} AI requests per day. Resets at midnight.` }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const body = await req.json();
     const { messages, cls, subject, chapter, studyMode } = body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
@@ -116,7 +128,7 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = buildSystemPrompt(cls, subject, chapter ?? "", studyMode ?? "general");
 
-    const stream = await client.messages.stream({
+    const stream = client.messages.stream({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 2048,
       system: systemPrompt,

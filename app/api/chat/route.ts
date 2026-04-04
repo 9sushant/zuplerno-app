@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
+import { checkAndIncrementUsage } from "@/lib/rate-limit";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -78,6 +79,17 @@ Always:
 
 export async function POST(req: NextRequest) {
   try {
+    const uid = req.cookies.get("ds_uid")?.value;
+    if (uid) {
+      const rl = await checkAndIncrementUsage(uid);
+      if (!rl.ok) {
+        return new Response(
+          JSON.stringify({ error: `Daily limit reached. ${rl.role === "teacher" ? "Teachers" : "Students"} can make ${rl.limit} AI requests per day. Resets at midnight.` }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const body = await req.json();
     const { messages, mode, cls, subject } = body as {
       messages: Array<{ role: "user" | "assistant"; content: string }>;
@@ -100,7 +112,7 @@ export async function POST(req: NextRequest) {
         : STUDENT_SYSTEM_PROMPT +
           (cls ? `\n\nContext: This student is in ${cls}${subject ? `, studying ${subject}` : ""}.` : "");
 
-    const stream = await client.messages.stream({
+    const stream = client.messages.stream({
       model: "claude-haiku-4-5",
       max_tokens: 4096,
       system: systemPrompt,

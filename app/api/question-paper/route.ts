@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest } from "next/server";
+import { checkAndIncrementUsage } from "@/lib/rate-limit";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -75,6 +76,17 @@ Rules for question generation:
 
 export async function POST(req: NextRequest) {
   try {
+    const uid = req.cookies.get("ds_uid")?.value;
+    if (uid) {
+      const rl = await checkAndIncrementUsage(uid);
+      if (!rl.ok) {
+        return new Response(
+          JSON.stringify({ error: `Daily limit reached. Teachers can make ${rl.limit} AI requests per day. Resets at midnight.` }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const body = await req.json();
     const {
       cls,
@@ -137,7 +149,7 @@ Difficulty: ${difficultyMap[difficulty] || difficultyMap.mixed}
 
 Generate the complete question paper in the prescribed format including the answer key at the end.`;
 
-    const stream = await client.messages.stream({
+    const stream = client.messages.stream({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 4096,
       system: QUESTION_PAPER_SYSTEM_PROMPT,
