@@ -29,7 +29,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Incorrect PIN. Please check and try again." }, { status: 401 });
     }
 
-    return NextResponse.json({ success: true, user: toPublicUser(user) });
+    const publicUser = toPublicUser(user);
+    const res = NextResponse.json({ success: true, user: publicUser });
+
+    // Set HttpOnly session cookie (30 days)
+    res.cookies.set("ds_uid", user.id, {
+      httpOnly: true,
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    return res;
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }

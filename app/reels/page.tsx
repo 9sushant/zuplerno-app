@@ -324,28 +324,61 @@ function ActionButtons({ reel }: { reel: Reel }) {
   const [bouncing, setBouncing] = useState(false);
 
   useEffect(() => {
+    // Optimistic load from localStorage, then sync with DB
     setLiked(!!localStorage.getItem("reel_liked_" + reel.id));
     setLikeCount(parseInt(localStorage.getItem("reel_likes_" + reel.id) || "0", 10));
+
+    fetch("/api/reels/likes?reel_id=" + reel.id)
+      .then((r) => r.json())
+      .then((data) => {
+        if (typeof data.count === "number") setLikeCount(data.count);
+        if (typeof data.liked === "boolean") {
+          setLiked(data.liked);
+          if (data.liked) {
+            localStorage.setItem("reel_liked_" + reel.id, "1");
+          } else {
+            localStorage.removeItem("reel_liked_" + reel.id);
+          }
+        }
+      })
+      .catch(() => {});
   }, [reel.id]);
 
-  function toggleLike() {
+  async function toggleLike() {
     setBouncing(true);
     setTimeout(() => setBouncing(false), 300);
+
+    // Optimistic update
     const next = !liked;
-    setLiked(next);
     const newCount = next ? likeCount + 1 : Math.max(0, likeCount - 1);
+    setLiked(next);
     setLikeCount(newCount);
+
+    // Sync to DB
+    try {
+      const res = await fetch("/api/reels/likes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reel_id: reel.id }),
+      });
+      const data = await res.json();
+      if (typeof data.count === "number") setLikeCount(data.count);
+      if (typeof data.liked === "boolean") setLiked(data.liked);
+    } catch {
+      // revert on failure
+      setLiked(!next);
+      setLikeCount(likeCount);
+    }
+
+    // Keep localStorage in sync for liked page (offline/fast access)
     if (next) {
       localStorage.setItem("reel_liked_" + reel.id, "1");
-      const likedReels: string[] = JSON.parse(localStorage.getItem("liked_reel_ids") || "[]");
-      if (!likedReels.includes(reel.id)) {
-        likedReels.unshift(reel.id);
-        localStorage.setItem("liked_reel_ids", JSON.stringify(likedReels));
-      }
+      const ids: string[] = JSON.parse(localStorage.getItem("liked_reel_ids") || "[]");
+      if (!ids.includes(reel.id)) localStorage.setItem("liked_reel_ids", JSON.stringify([reel.id, ...ids]));
     } else {
       localStorage.removeItem("reel_liked_" + reel.id);
-      const likedReels: string[] = JSON.parse(localStorage.getItem("liked_reel_ids") || "[]");
-      localStorage.setItem("liked_reel_ids", JSON.stringify(likedReels.filter((id) => id !== reel.id)));
+      const ids: string[] = JSON.parse(localStorage.getItem("liked_reel_ids") || "[]");
+      localStorage.setItem("liked_reel_ids", JSON.stringify(ids.filter((id) => id !== reel.id)));
     }
     localStorage.setItem("reel_likes_" + reel.id, String(newCount));
   }

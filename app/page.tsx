@@ -27,17 +27,28 @@ export default function Home() {
 
   useEffect(() => {
     const raw = localStorage.getItem("ds_session");
-    if (!raw) {
-      router.replace("/login");
-      return;
+    if (raw) {
+      try {
+        setUser(JSON.parse(raw) as SessionUser);
+        setAuthChecked(true);
+        return;
+      } catch {
+        localStorage.removeItem("ds_session");
+      }
     }
-    try {
-      setUser(JSON.parse(raw) as SessionUser);
-    } catch {
-      router.replace("/login");
-      return;
-    }
-    setAuthChecked(true);
+    // Fallback: restore session from HttpOnly cookie via server
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.user) {
+          localStorage.setItem("ds_session", JSON.stringify(data.user));
+          setUser(data.user as SessionUser);
+          setAuthChecked(true);
+        } else {
+          router.replace("/login");
+        }
+      })
+      .catch(() => router.replace("/login"));
   }, [router]);
 
   if (!authChecked || !user) return null;
@@ -67,7 +78,9 @@ function HomePage({
 
   function logout() {
     localStorage.removeItem("ds_session");
-    router.replace("/login");
+    fetch("/api/auth/logout", { method: "POST" }).finally(() => {
+      router.replace("/login");
+    });
   }
 
   return (
@@ -115,19 +128,34 @@ function HomePage({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full max-w-2xl">
         {/* Teacher card — only for teachers */}
         {isTeacher && (
-          <button
-            onClick={() => setMode("teacher")}
-            className="group bg-black/20 border border-white/20 hover:bg-black/30 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 cursor-pointer"
-          >
-            <div className="text-4xl mb-4">📚</div>
-            <h2 className="text-xl font-semibold text-white mb-2">Lesson Planner</h2>
-            <p className="text-white/70 text-sm leading-relaxed">
-              Generate detailed lesson plans with 5E methodology, Bloom&apos;s taxonomy, NCERT alignment, and board exam tips.
-            </p>
-            <div className="mt-4 text-white font-medium text-sm group-hover:translate-x-1 transition-transform">
-              Create lesson plan →
-            </div>
-          </button>
+          <>
+            <button
+              onClick={() => setMode("teacher")}
+              className="group bg-black/20 border border-white/20 hover:bg-black/30 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 cursor-pointer"
+            >
+              <div className="text-4xl mb-4">📚</div>
+              <h2 className="text-xl font-semibold text-white mb-2">Lesson Planner</h2>
+              <p className="text-white/70 text-sm leading-relaxed">
+                Generate detailed Dalimss Sunbeam lesson plans aligned with CBSE/NCERT curriculum.
+              </p>
+              <div className="mt-4 text-white font-medium text-sm group-hover:translate-x-1 transition-transform">
+                Create lesson plan →
+              </div>
+            </button>
+            <Link
+              href="/lesson-plans"
+              className="group bg-black/20 border border-white/20 hover:bg-black/30 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
+            >
+              <div className="text-4xl mb-4">🗂️</div>
+              <h2 className="text-xl font-semibold text-white mb-2">Saved Plans</h2>
+              <p className="text-white/70 text-sm leading-relaxed">
+                View, print, and manage your previously saved lesson plans.
+              </p>
+              <div className="mt-4 text-white font-medium text-sm group-hover:translate-x-1 transition-transform">
+                View saved plans →
+              </div>
+            </Link>
+          </>
         )}
 
         {/* Student card — only for students */}
@@ -184,6 +212,7 @@ function ChatPage({ mode, goHome, user }: { mode: "teacher" | "student"; goHome:
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [configDone, setConfigDone] = useState(false);
+  const [savedMsg, setSavedMsg] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -220,6 +249,15 @@ function ChatPage({ mode, goHome, user }: { mode: "teacher" | "student"; goHome:
   function startChat() {
     if (!selectedClass || !selectedSubject) return;
     setConfigDone(true);
+
+    // Track student progress
+    if (!isTeacher) {
+      fetch("/api/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ class: selectedClass, subject: selectedSubject, chapter: selectedChapter }),
+      }).catch(() => {});
+    }
 
     const chapterPart = selectedChapter
       ? ", Chapter: **" + selectedChapter + "**"
@@ -358,6 +396,99 @@ function ChatPage({ mode, goHome, user }: { mode: "teacher" | "student"; goHome:
       e.preventDefault();
       sendMessage();
     }
+  }
+
+  async function sendMessageText(text: string) {
+    if (!text || loading) return;
+    setInput(text);
+    // Use a small trick: set input then immediately send
+    const newMessages: Message[] = [...messages, { role: "user", content: text }];
+    setMessages(newMessages);
+    setLoading(true);
+
+    const contextPrefix = selectedChapter
+      ? "[Context: " + selectedClass + ", " + selectedSubject + ", Chapter: " + selectedChapter + "]\n\n"
+      : "";
+
+    const apiMessages = newMessages.map((m, i) =>
+      i === newMessages.length - 1 && m.role === "user"
+        ? { role: m.role, content: contextPrefix + m.content }
+        : { role: m.role, content: m.content }
+    );
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: apiMessages, mode, cls: selectedClass, subject: selectedSubject }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        setMessages((prev) => [...prev, { role: "assistant", content: "Error: " + (err.error || "Something went wrong.") }]);
+        setLoading(false);
+        return;
+      }
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let assistantText = "";
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        for (const line of chunk.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.text) {
+              assistantText += parsed.text;
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: "assistant", content: assistantText };
+                return updated;
+              });
+            }
+          } catch { /* skip */ }
+        }
+      }
+    } catch (err) {
+      setMessages((prev) => [...prev, { role: "assistant", content: "Network error: " + String(err) }]);
+    }
+
+    setInput("");
+    setLoading(false);
+  }
+
+  async function savePlan(content: string) {
+    setSavedMsg("");
+    try {
+      const sessionRaw = localStorage.getItem("ds_session");
+      const sessionUser = sessionRaw ? JSON.parse(sessionRaw) : null;
+      const res = await fetch("/api/lesson-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: sessionUser?.id ?? "",
+          class: selectedClass,
+          subject: selectedSubject,
+          chapter: selectedChapter,
+          content,
+        }),
+      });
+      if (res.ok) {
+        setSavedMsg("Plan saved!");
+      } else {
+        setSavedMsg("Save failed.");
+      }
+    } catch {
+      setSavedMsg("Save failed.");
+    }
+    setTimeout(() => setSavedMsg(""), 3000);
   }
 
   if (!configDone) {
@@ -500,7 +631,7 @@ function ChatPage({ mode, goHome, user }: { mode: "teacher" | "student"; goHome:
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col" style={{ height: "100dvh" }}>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 bg-slate-900/80 backdrop-blur">
         <button
@@ -535,8 +666,13 @@ function ChatPage({ mode, goHome, user }: { mode: "teacher" | "student"; goHome:
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        {savedMsg && (
+          <div className="text-center text-xs text-emerald-300 bg-emerald-900/20 border border-emerald-500/30 rounded-xl py-2">
+            {savedMsg}
+          </div>
+        )}
         {messages.map((msg, i) => (
-          <MessageBubble key={i} msg={msg} isTeacher={isTeacher} />
+          <MessageBubble key={i} msg={msg} isTeacher={isTeacher} onSavePlan={isTeacher ? savePlan : undefined} />
         ))}
         {loading &&
           messages[messages.length - 1]?.role !== "assistant" && (
@@ -563,7 +699,7 @@ function ChatPage({ mode, goHome, user }: { mode: "teacher" | "student"; goHome:
       </div>
 
       {/* Input area */}
-      <div className="px-4 py-3 border-t border-white/10 bg-slate-900/80 backdrop-blur">
+      <div className="px-4 pt-3 border-t border-white/10 bg-slate-900/80 backdrop-blur" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}>
         {isTeacher && (
           <div className="flex gap-2 mb-2 overflow-x-auto pb-1">
             {[
@@ -575,13 +711,24 @@ function ChatPage({ mode, goHome, user }: { mode: "teacher" | "student"; goHome:
             ].map((suggestion) => (
               <button
                 key={suggestion}
-                onClick={() => {
-                  setInput(suggestion);
-                  textareaRef.current?.focus();
-                }}
-                className="whitespace-nowrap text-xs px-3 py-1 bg-black/15 border border-white/20 rounded-full text-white/70 hover:text-white hover:border-white/40 transition-all cursor-pointer"
+                onClick={() => sendMessageText(suggestion)}
+                disabled={loading}
+                className="whitespace-nowrap text-xs px-3 py-1 bg-black/15 border border-white/20 rounded-full text-white/70 hover:text-white hover:border-white/40 transition-all cursor-pointer disabled:opacity-40"
               >
                 {suggestion}
+              </button>
+            ))}
+            {chapters.length > 0 && chapters.map((ch) => (
+              <button
+                key={ch}
+                onClick={() => {
+                  setSelectedChapter(ch);
+                  sendMessageText("Generate lesson plan for chapter: " + ch);
+                }}
+                disabled={loading}
+                className="whitespace-nowrap text-xs px-3 py-1 bg-blue-900/30 border border-blue-400/30 rounded-full text-blue-200/80 hover:text-blue-100 hover:border-blue-400/60 transition-all cursor-pointer disabled:opacity-40"
+              >
+                📖 {ch}
               </button>
             ))}
           </div>
@@ -642,10 +789,13 @@ function ChatPage({ mode, goHome, user }: { mode: "teacher" | "student"; goHome:
 function MessageBubble({
   msg,
   isTeacher,
+  onSavePlan,
 }: {
   msg: Message;
   isTeacher: boolean;
+  onSavePlan?: (content: string) => void;
 }) {
+  const [copied, setCopied] = useState(false);
   const isUser = msg.role === "user";
 
   if (isUser) {
@@ -663,10 +813,64 @@ function MessageBubble({
     );
   }
 
+  function handleCopy() {
+    navigator.clipboard.writeText(msg.content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  function handlePrint() {
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.write(`<!DOCTYPE html><html><head>
+      <title>Lesson Plan</title>
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 13px; line-height: 1.6; margin: 32px; color: #111; }
+        h1,h2,h3 { margin: 16px 0 6px; } table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        td,th { border: 1px solid #aaa; padding: 6px 10px; text-align: left; }
+        th { background: #f0f0f0; font-weight: bold; }
+        pre { white-space: pre-wrap; font-family: inherit; }
+      </style>
+    </head><body><pre>${msg.content.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+    <script>window.onload=function(){window.print();window.close();}<\/script></body></html>`);
+    w.document.close();
+  }
+
   return (
-    <div className="flex justify-start">
+    <div className="flex justify-start group">
       <div className="max-w-[90%] bg-white rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-gray-800 leading-relaxed shadow-sm">
         <MarkdownContent content={msg.content} />
+        {isTeacher && msg.content.length > 100 && (
+          <div className="flex gap-2 mt-3 pt-2 border-t border-gray-100">
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors cursor-pointer"
+            >
+              {copied ? (
+                <><span>✓</span> Copied!</>
+              ) : (
+                <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> Copy</>
+              )}
+            </button>
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg transition-colors cursor-pointer"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              Print / PDF
+            </button>
+            {onSavePlan && (
+              <button
+                onClick={() => onSavePlan(msg.content)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+                Save Plan
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

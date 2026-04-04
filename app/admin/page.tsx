@@ -17,7 +17,16 @@ type AdminUser = {
   created_at: string;
 };
 
-type Tab = "pending" | "active" | "all";
+type Tab = "pending" | "active" | "all" | "analytics";
+
+type Analytics = {
+  total_users: number;
+  active_users: number;
+  total_plans: number;
+  total_reels: number;
+  top_subjects: Array<{ subject: string; count: number }>;
+  recent_progress: Array<{ user_id: string; name: string; class: string; subject: string; chapter: string; sessions: number; last_active: string }>;
+};
 
 export default function AdminPage() {
   const [adminPin, setAdminPin] = useState("");
@@ -30,6 +39,17 @@ export default function AdminPage() {
   const [customPin, setCustomPin] = useState("");
   const [justAssigned, setJustAssigned] = useState<{ name: string; pin: string } | null>(null);
   const [copiedPin, setCopiedPin] = useState<string | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  async function loadAnalytics(pin: string) {
+    setAnalyticsLoading(true);
+    try {
+      const res = await fetch("/api/admin/analytics", { headers: { "x-admin-pin": pin } });
+      if (res.ok) setAnalytics(await res.json());
+    } catch { /* ignore */ }
+    setAnalyticsLoading(false);
+  }
 
   const fetchUsers = useCallback(async (pin: string) => {
     setLoading(true);
@@ -203,19 +223,22 @@ export default function AdminPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-5">
-          {(["pending", "active", "all"] as Tab[]).map((t) => (
+        <div className="flex gap-2 mb-5 flex-wrap">
+          {(["pending", "active", "all", "analytics"] as Tab[]).map((t) => (
             <button
               key={t}
-              onClick={() => setTab(t)}
+              onClick={() => {
+                setTab(t);
+                if (t === "analytics" && !analytics) loadAnalytics(adminPin);
+              }}
               className={
                 "px-4 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer capitalize flex items-center gap-1.5 " +
                 (tab === t
-                  ? "bg-blue-600 text-white"
+                  ? t === "analytics" ? "bg-violet-600 text-white" : "bg-blue-600 text-white"
                   : "bg-white/5 text-slate-400 hover:text-white hover:bg-white/10")
               }
             >
-              {t}
+              {t === "analytics" ? "📊 Analytics" : t}
               {t === "pending" && pendingCount > 0 && (
                 <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center leading-none">
                   {pendingCount}
@@ -225,33 +248,116 @@ export default function AdminPage() {
           ))}
         </div>
 
+        {/* Analytics tab */}
+        {tab === "analytics" && (
+          analyticsLoading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : analytics ? (
+            <div className="space-y-4">
+              {/* Stats grid */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  { label: "Total Users", value: analytics.total_users, color: "bg-blue-600/30 border-blue-500/30" },
+                  { label: "Active Users", value: analytics.active_users, color: "bg-emerald-600/30 border-emerald-500/30" },
+                  { label: "Lesson Plans", value: analytics.total_plans, color: "bg-violet-600/30 border-violet-500/30" },
+                  { label: "Reels", value: analytics.total_reels, color: "bg-amber-600/30 border-amber-500/30" },
+                ].map((s) => (
+                  <div key={s.label} className={"rounded-2xl border p-4 text-center " + s.color}>
+                    <p className="text-white text-2xl font-bold">{s.value}</p>
+                    <p className="text-white/60 text-xs mt-1">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Top subjects */}
+              {analytics.top_subjects.length > 0 && (
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <p className="text-white font-semibold text-sm mb-3">Most-used Subjects (Lesson Plans)</p>
+                  <div className="space-y-2">
+                    {analytics.top_subjects.map((s) => (
+                      <div key={s.subject} className="flex items-center gap-2">
+                        <span className="text-white/80 text-xs flex-1 truncate">{s.subject}</span>
+                        <div className="flex-1 bg-white/10 rounded-full h-2 max-w-[120px]">
+                          <div
+                            className="bg-violet-500 h-2 rounded-full"
+                            style={{ width: Math.min(100, (s.count / (analytics.top_subjects[0]?.count || 1)) * 100) + "%" }}
+                          />
+                        </div>
+                        <span className="text-white/60 text-xs w-6 text-right">{s.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recent student activity */}
+              {analytics.recent_progress.length > 0 && (
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                  <p className="text-white font-semibold text-sm mb-3">Recent Student Activity</p>
+                  <div className="space-y-2">
+                    {analytics.recent_progress.map((p, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <div className="w-7 h-7 rounded-full bg-emerald-700 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
+                          {p.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-white font-medium">{p.name}</span>
+                          <span className="text-white/50 ml-1">{p.class}</span>
+                          <p className="text-white/50 truncate">{p.subject}{p.chapter ? " — " + p.chapter : ""}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-white/70">{p.sessions} session{p.sessions !== 1 ? "s" : ""}</p>
+                          <p className="text-white/40">{new Date(p.last_active).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={() => loadAnalytics(adminPin)}
+                className="w-full py-2 bg-white/5 hover:bg-white/10 text-white/60 text-sm rounded-xl transition-colors cursor-pointer"
+              >
+                Refresh Analytics
+              </button>
+            </div>
+          ) : (
+            <p className="text-slate-400 text-center py-12">Failed to load analytics.</p>
+          )
+        )}
+
         {/* Users list */}
-        {loading ? (
-          <div className="flex justify-center py-16">
-            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-4xl mb-3">{tab === "pending" ? "✅" : "👥"}</p>
-            <p className="text-slate-400">
-              {tab === "pending" ? "No pending registrations!" : "No users found."}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {filtered.map((user) => (
-              <UserCard
-                key={user.id}
-                user={user}
-                customPin={customPin}
-                setCustomPin={setCustomPin}
-                assigning={assigningId === user.id}
-                copiedPin={copiedPin}
-                onAssign={() => assignPin(user.id)}
-                onCopy={(pin) => copyToClipboard(pin, user.id)}
-              />
-            ))}
-          </div>
+        {tab !== "analytics" && (
+          loading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-4xl mb-3">{tab === "pending" ? "✅" : "👥"}</p>
+              <p className="text-slate-400">
+                {tab === "pending" ? "No pending registrations!" : "No users found."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filtered.map((user) => (
+                <UserCard
+                  key={user.id}
+                  user={user}
+                  customPin={customPin}
+                  setCustomPin={setCustomPin}
+                  assigning={assigningId === user.id}
+                  copiedPin={copiedPin}
+                  onAssign={() => assignPin(user.id)}
+                  onCopy={(pin) => copyToClipboard(pin, user.id)}
+                />
+              ))}
+            </div>
+          )
         )}
       </div>
     </div>
