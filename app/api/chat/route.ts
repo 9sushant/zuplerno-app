@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
 
     const stream = await client.messages.stream({
       model: "claude-haiku-4-5",
-      max_tokens: 2048,
+      max_tokens: 4096,
       system: systemPrompt,
       messages: messages.map((m) => ({
         role: m.role,
