@@ -64,10 +64,25 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     screenshots: [
       {
-        src: "/screenshots/home.png",
-        sizes: "1080x1920",
-        type: "image/png",
+        src: "/screenshots/home.jpg",
+        sizes: "733x1205",
+        type: "image/jpeg",
+        form_factor: "narrow",
         label: "Home Screen",
+      },
+      {
+        src: "/screenshots/lesson.jpg",
+        sizes: "739x1183",
+        type: "image/jpeg",
+        form_factor: "narrow",
+        label: "Lesson Plan Generator",
+      },
+      {
+        src: "/screenshots/study.jpg",
+        sizes: "750x1185",
+        type: "image/jpeg",
+        form_factor: "narrow",
+        label: "Study Buddy",
       },
     ],
   };
