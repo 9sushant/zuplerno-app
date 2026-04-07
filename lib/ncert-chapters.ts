@@ -1047,6 +1047,17 @@ export const NCERT_CHAPTERS: NCERTData = {
       "Silk Road",
       "Father to Son",
     ],
+    "Psychology": [
+      "What is Psychology?",
+      "Methods of Enquiry in Psychology",
+      "The Bases of Human Behaviour",
+      "Human Development",
+      "Sensory, Attentional and Perceptual Processes",
+      "Learning",
+      "Human Memory",
+      "Thinking",
+      "Motivation and Emotion",
+    ],
   },
 
   "Class 12": {
@@ -1249,6 +1260,17 @@ export const NCERT_CHAPTERS: NCERTData = {
       "Biomechanics and Sports",
       "Psychology and Sports",
       "Training in Sports",
+    ],
+    "Psychology": [
+      "Variations in Psychological Attributes",
+      "Self and Personality",
+      "Meeting Life Challenges",
+      "Psychological Disorders",
+      "Therapeutic Approaches",
+      "Attitude and Social Cognition",
+      "Social Influence and Group Processes",
+      "Psychology and Life",
+      "Developing Psychological Skills",
     ],
   },
 };
