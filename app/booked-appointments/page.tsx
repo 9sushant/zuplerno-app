@@ -275,7 +275,7 @@ export default function BookedAppointmentsPage() {
                         className="w-full bg-white/10 border border-white/20 focus:border-white/40 rounded-xl px-3 py-2 text-white placeholder-white/30 text-sm outline-none transition-colors resize-none"
                       />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <button
                         onClick={() => saveEdit(appt.id)}
                         disabled={saving}
@@ -288,6 +288,13 @@ export default function BookedAppointmentsPage() {
                         className="bg-white/10 border border-white/20 text-white/70 text-sm px-4 py-2 rounded-xl hover:bg-white/20 transition-colors cursor-pointer"
                       >
                         Cancel
+                      </button>
+                      <button
+                        onClick={() => handleDelete(appt.id)}
+                        disabled={deleting === appt.id}
+                        className="bg-red-500/20 border border-red-400/30 text-red-300 text-sm px-4 py-2 rounded-xl hover:bg-red-500/30 transition-colors disabled:opacity-50 cursor-pointer ml-auto"
+                      >
+                        {deleting === appt.id ? "Deleting..." : "Delete"}
                       </button>
                     </div>
                   </div>
