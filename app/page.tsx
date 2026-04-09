@@ -209,22 +209,20 @@ function HomePage({
           </Link>
         )}
 
-        {/* Appointment — students only */}
-        {!isTeacher && (
-          <Link
-            href="/appointment"
-            className="group bg-black/20 border border-white/20 hover:bg-black/30 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
-          >
-            <div className="text-4xl mb-4">🗓️</div>
-            <h2 className="text-xl font-semibold text-white mb-2">Counsellor Appointment</h2>
-            <p className="text-white/70 text-sm leading-relaxed">
-              Book a session with the school counsellor. Submit your request with your details and preferred date.
-            </p>
-            <div className="mt-4 text-white font-medium text-sm group-hover:translate-x-1 transition-transform">
-              Book appointment →
-            </div>
-          </Link>
-        )}
+        {/* Appointment — all users */}
+        <Link
+          href="/appointment"
+          className="group bg-black/20 border border-white/20 hover:bg-black/30 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
+        >
+          <div className="text-4xl mb-4">🗓️</div>
+          <h2 className="text-xl font-semibold text-white mb-2">Counsellor Appointment</h2>
+          <p className="text-white/70 text-sm leading-relaxed">
+            Book a session with the school counsellor. Submit your request with your details and preferred date.
+          </p>
+          <div className="mt-4 text-white font-medium text-sm group-hover:translate-x-1 transition-transform">
+            Book appointment →
+          </div>
+        </Link>
 
         {/* Booked Appointments — teachers only */}
         {isTeacher && (

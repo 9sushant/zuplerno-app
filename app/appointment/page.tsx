@@ -30,7 +30,6 @@ export default function AppointmentPage() {
     if (raw) {
       try {
         const u = JSON.parse(raw) as SessionUser;
-        if (u.role !== "student") { router.replace("/"); return; }
         setUser(u);
         setAuthChecked(true);
         return;

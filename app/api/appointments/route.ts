@@ -37,10 +37,6 @@ export async function POST(req: NextRequest) {
     if (!user || user.status !== "active") {
       return NextResponse.json({ error: "Session expired." }, { status: 401 });
     }
-    if (user.role !== "student") {
-      return NextResponse.json({ error: "Only students can book appointments." }, { status: 403 });
-    }
-
     const body = await req.json();
     const { roll_no, parent_name, preferred_date, reason } = body;
 
