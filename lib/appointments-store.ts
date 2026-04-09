@@ -87,6 +87,12 @@ export async function getAppointmentsByStudent(studentId: string): Promise<Appoi
   return result.rows as Appointment[];
 }
 
+export async function deleteAppointment(id: string): Promise<boolean> {
+  await ensureAppointmentsTable();
+  const result = await sql`DELETE FROM appointments WHERE id = ${id}`;
+  return (result.rowCount ?? 0) > 0;
+}
+
 export async function updateAppointment(
   id: string,
   data: { status: AppointmentStatus; counsellor_notes?: string }

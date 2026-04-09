@@ -49,6 +49,7 @@ export default function BookedAppointmentsPage() {
   const [editStatus, setEditStatus] = useState<AppointmentStatus>("pending");
   const [editNotes, setEditNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<AppointmentStatus | "all">("all");
 
   useEffect(() => {
@@ -102,6 +103,17 @@ export default function BookedAppointmentsPage() {
   function cancelEdit() {
     setEditingId(null);
     setEditNotes("");
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this appointment? This cannot be undone.")) return;
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/appointments/${id}`, { method: "DELETE" });
+      if (res.ok) setAppointments((prev) => prev.filter((a) => a.id !== id));
+    } finally {
+      setDeleting(null);
+    }
   }
 
   async function saveEdit(id: string) {
@@ -280,12 +292,21 @@ export default function BookedAppointmentsPage() {
                     </div>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => startEdit(appt)}
-                    className="mt-1 text-xs text-white/50 hover:text-white/80 underline underline-offset-2 transition-colors cursor-pointer"
-                  >
-                    Edit / Update Status
-                  </button>
+                  <div className="mt-1 flex items-center gap-4">
+                    <button
+                      onClick={() => startEdit(appt)}
+                      className="text-xs text-white/50 hover:text-white/80 underline underline-offset-2 transition-colors cursor-pointer"
+                    >
+                      Edit / Update Status
+                    </button>
+                    <button
+                      onClick={() => handleDelete(appt.id)}
+                      disabled={deleting === appt.id}
+                      className="text-xs text-red-300/60 hover:text-red-300 underline underline-offset-2 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {deleting === appt.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
                 )}
               </div>
             ))}

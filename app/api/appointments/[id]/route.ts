@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserById } from "@/lib/users-store";
-import { updateAppointment, AppointmentStatus } from "@/lib/appointments-store";
+import { updateAppointment, deleteAppointment, AppointmentStatus } from "@/lib/appointments-store";
 
 export async function PATCH(
   req: NextRequest,
@@ -33,6 +33,34 @@ export async function PATCH(
     }
 
     return NextResponse.json(updated);
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const uid = req.cookies.get("ds_uid")?.value;
+    if (!uid) return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+
+    const user = await getUserById(uid);
+    if (!user || user.status !== "active") {
+      return NextResponse.json({ error: "Session expired." }, { status: 401 });
+    }
+    if (user.role !== "teacher") {
+      return NextResponse.json({ error: "Only teachers can delete appointments." }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const deleted = await deleteAppointment(id);
+    if (!deleted) {
+      return NextResponse.json({ error: "Appointment not found." }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
