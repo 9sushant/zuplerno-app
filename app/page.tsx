@@ -131,7 +131,7 @@ function HomePage({
           <>
             <button
               onClick={() => setMode("teacher")}
-              className="group bg-black/0 border border-white/20 hover:bg-black/0 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 cursor-pointer"
+              className="group bg-black/50 border border-white/20 hover:bg-black/60 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 cursor-pointer"
             >
               <div className="text-4xl mb-4">📚</div>
               <h2 className="text-xl font-semibold text-white mb-2">Lesson Planner</h2>
@@ -144,7 +144,7 @@ function HomePage({
             </button>
             <Link
               href="/lesson-plans"
-              className="group bg-black/0 border border-white/20 hover:bg-black/0 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
+              className="group bg-black/50 border border-white/20 hover:bg-black/60 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
             >
               <div className="text-4xl mb-4">🗂️</div>
               <h2 className="text-xl font-semibold text-white mb-2">Saved Plans</h2>
@@ -162,7 +162,7 @@ function HomePage({
         {!isTeacher && (
           <button
             onClick={() => setMode("student")}
-            className="group bg-black/0 border border-white/20 hover:bg-black/0 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 cursor-pointer"
+            className="group bg-black/50 border border-white/20 hover:bg-black/60 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 cursor-pointer"
           >
             <div className="text-4xl mb-4">🎓</div>
             <h2 className="text-xl font-semibold text-white mb-2">Ask a Doubt</h2>
@@ -179,7 +179,7 @@ function HomePage({
         {!isTeacher && (
           <Link
             href="/study-buddy"
-            className="group bg-black/0 border border-white/20 hover:bg-black/0 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
+            className="group bg-black/50 border border-white/20 hover:bg-black/60 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
           >
             <div className="text-4xl mb-4">🤖</div>
             <h2 className="text-xl font-semibold text-white mb-2">Study Buddy</h2>
@@ -196,7 +196,7 @@ function HomePage({
         {isTeacher && (
           <Link
             href="/question-paper"
-            className="group bg-black/0 border border-white/20 hover:bg-black/0 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
+            className="group bg-black/50 border border-white/20 hover:bg-black/60 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
           >
             <div className="text-4xl mb-4">📝</div>
             <h2 className="text-xl font-semibold text-white mb-2">Question Paper</h2>
@@ -212,7 +212,7 @@ function HomePage({
         {/* Appointment — all users */}
         <Link
           href="/appointment"
-          className="group bg-black/0 border border-white/20 hover:bg-black/0 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
+          className="group bg-black/50 border border-white/20 hover:bg-black/60 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
         >
           <div className="text-4xl mb-4">🗓️</div>
           <h2 className="text-xl font-semibold text-white mb-2">Counsellor Appointment</h2>
@@ -228,7 +228,7 @@ function HomePage({
         {isTeacher && (
           <Link
             href="/booked-appointments"
-            className="group bg-black/0 border border-white/20 hover:bg-black/0 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
+            className="group bg-black/50 border border-white/20 hover:bg-black/60 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex flex-col"
           >
             <div className="text-4xl mb-4">📋</div>
             <h2 className="text-xl font-semibold text-white mb-2">Booked Appointments</h2>
@@ -243,7 +243,7 @@ function HomePage({
 
         <Link
           href="/reels"
-          className="group md:col-span-2 bg-black/0 border border-white/20 hover:bg-black/0 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex items-center gap-6"
+          className="group md:col-span-2 bg-black/50 border border-white/20 hover:bg-black/60 hover:border-white/40 rounded-2xl p-8 text-left transition-all duration-200 flex items-center gap-6"
         >
           <div className="text-5xl flex-shrink-0">🎬</div>
           <div className="flex-1 min-w-0">
