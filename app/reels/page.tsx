@@ -61,10 +61,13 @@ export default function ReelsPage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/auth/me", { credentials: "include", cache: "no-store" })
-      .then((r) => r.json())
-      .then((data) => { if (data.user?.role === "teacher") setIsTeacher(true); })
-      .catch(() => {});
+    try {
+      const session = localStorage.getItem("ds_session");
+      if (session) {
+        const user = JSON.parse(session);
+        if (user?.role === "teacher") setIsTeacher(true);
+      }
+    } catch {}
   }, []);
 
   async function handleDelete() {
