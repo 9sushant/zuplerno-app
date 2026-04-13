@@ -61,7 +61,7 @@ export default function ReelsPage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/auth/me")
+    fetch("/api/auth/me", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
       .then((data) => { if (data.user?.role === "teacher") setIsTeacher(true); })
       .catch(() => {});
