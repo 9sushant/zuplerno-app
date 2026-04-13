@@ -46,6 +46,11 @@ export default function ReelsPage() {
   const [animDir, setAnimDir] = useState<"up" | "down" | null>(null);
   const [animating, setAnimating] = useState(false);
   const [muted, setMuted] = useState(true);
+  const [isTeacher, setIsTeacher] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePin, setDeletePin] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -54,6 +59,37 @@ export default function ReelsPage() {
       .then((data: Reel[]) => { setReels(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => { if (data.user?.role === "teacher") setIsTeacher(true); })
+      .catch(() => {});
+  }, []);
+
+  async function handleDelete() {
+    if (deletePin.length < 4) return;
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      const res = await fetch("/api/reels/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: reels[index].id, pin: deletePin }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setDeleteError(data.error || "Failed to delete."); setDeleting(false); return; }
+      const updated = reels.filter((_, i) => i !== index);
+      setReels(updated);
+      setIndex(Math.min(index, updated.length - 1));
+      setShowDeleteModal(false);
+      setDeletePin("");
+    } catch {
+      setDeleteError("Something went wrong.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const navigate = useCallback(
     (dir: "up" | "down") => {
@@ -164,9 +200,61 @@ export default function ReelsPage() {
         </div>
       </div>
 
+      {/* ── Delete PIN modal ── */}
+      {showDeleteModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.75)" }}>
+          <div className="bg-zinc-900 rounded-2xl p-6 mx-6 w-full max-w-xs">
+            <h3 className="text-white font-bold text-base mb-1">Delete Reel</h3>
+            <p className="text-zinc-400 text-xs mb-4">Enter your teacher PIN to confirm deletion.</p>
+            <input
+              type="password"
+              inputMode="numeric"
+              maxLength={8}
+              value={deletePin}
+              onChange={(e) => { setDeletePin(e.target.value); setDeleteError(""); }}
+              placeholder="Teacher PIN"
+              className="w-full bg-zinc-800 text-white rounded-xl px-4 py-3 text-sm outline-none mb-3"
+              autoFocus
+            />
+            {deleteError && <p className="text-red-400 text-xs mb-3">{deleteError}</p>}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeletePin(""); setDeleteError(""); }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white"
+                style={{ background: "rgba(255,255,255,0.1)" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deletePin.length < 4 || deleting}
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white"
+                style={{ background: deletePin.length < 4 || deleting ? "#7f1d1d" : "#ef4444", opacity: deletePin.length < 4 || deleting ? 0.5 : 1 }}
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Right action buttons (absolutely positioned) ── */}
       <div className="absolute right-3 z-30 flex flex-col items-center gap-5" style={{ bottom: "120px" }}>
         <ActionButtons reel={reel} />
+        {/* Delete (teacher only) */}
+        {isTeacher && (
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="flex flex-col items-center gap-1 cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(239,68,68,0.2)" }}>
+              <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <span className="text-red-400 text-xs">Delete</span>
+          </button>
+        )}
         {/* Mute */}
         <button
           onClick={() => setMuted((m) => !m)}
