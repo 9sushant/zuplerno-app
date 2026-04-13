@@ -9,7 +9,9 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === "development",
   workboxOptions: {
     disableDevLogs: true,
-    exclude: [/app-build-manifest\.json$/, /\/reels/],
+    exclude: [/app-build-manifest\.json$/],
+    skipWaiting: true,
+    clientsClaim: true,
   },
 });
 
