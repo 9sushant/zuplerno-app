@@ -46,7 +46,6 @@ export default function ReelsPage() {
   const [animDir, setAnimDir] = useState<"up" | "down" | null>(null);
   const [animating, setAnimating] = useState(false);
   const [muted, setMuted] = useState(true);
-  const [isTeacher, setIsTeacher] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePin, setDeletePin] = useState("");
   const [deleteError, setDeleteError] = useState("");
@@ -60,15 +59,6 @@ export default function ReelsPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    try {
-      const session = localStorage.getItem("ds_session");
-      if (session) {
-        const user = JSON.parse(session);
-        if (user?.role === "teacher") setIsTeacher(true);
-      }
-    } catch {}
-  }, []);
 
   async function handleDelete() {
     if (deletePin.length < 4) return;
@@ -244,20 +234,18 @@ export default function ReelsPage() {
       {/* ── Right action buttons (absolutely positioned) ── */}
       <div className="absolute right-3 z-30 flex flex-col items-center gap-5" style={{ bottom: "120px" }}>
         <ActionButtons reel={reel} />
-        {/* Delete (teacher only) */}
-        {isTeacher && (
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="flex flex-col items-center gap-1 cursor-pointer"
-          >
-            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(239,68,68,0.2)" }}>
-              <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </div>
-            <span className="text-red-400 text-xs">Delete</span>
-          </button>
-        )}
+        {/* Delete (PIN-protected) */}
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          className="flex flex-col items-center gap-1 cursor-pointer"
+        >
+          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(239,68,68,0.2)" }}>
+            <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </div>
+          <span className="text-red-400 text-xs">Delete</span>
+        </button>
         {/* Mute */}
         <button
           onClick={() => setMuted((m) => !m)}
