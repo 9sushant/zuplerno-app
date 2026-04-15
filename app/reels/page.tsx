@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 type Reel = {
   id: string;
@@ -39,26 +40,201 @@ function subjectColor(subject: string) {
   return "#3b82f6";
 }
 
+function sortClasses(classes: string[]) {
+  return [...classes].sort((a, b) => {
+    const na = parseInt(a.replace(/\D/g, ""), 10);
+    const nb = parseInt(b.replace(/\D/g, ""), 10);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    return a.localeCompare(b);
+  });
+}
+
+// ─── Root page (wraps in Suspense for useSearchParams) ───────────────────────
 export default function ReelsPage() {
-  const [reels, setReels] = useState<Reel[]>([]);
+  return (
+    <Suspense fallback={<LoadingScreen />}>
+      <ReelsInner />
+    </Suspense>
+  );
+}
+
+function ReelsInner() {
+  const searchParams = useSearchParams();
+  const cls = searchParams.get("cls");
+  const chapter = searchParams.get("chapter");
+
+  const [allReels, setAllReels] = useState<Reel[]>([]);
   const [loading, setLoading] = useState(true);
-  const [index, setIndex] = useState(0);
-  const [animDir, setAnimDir] = useState<"up" | "down" | null>(null);
-  const [animating, setAnimating] = useState(false);
-  const [muted, setMuted] = useState(true);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deletePin, setDeletePin] = useState("");
-  const [deleteError, setDeleteError] = useState("");
-  const [deleting, setDeleting] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     fetch("/api/reels")
       .then((r) => r.json())
-      .then((data: Reel[]) => { setReels(data); setLoading(false); })
+      .then((data: Reel[]) => { setAllReels(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
+  if (loading) return <LoadingScreen />;
+
+  if (!cls) return <ClassSelectView reels={allReels} />;
+  if (!chapter) return <ChapterSelectView reels={allReels} cls={cls} />;
+
+  const filtered = allReels.filter((r) => r.class === cls && r.chapter === chapter);
+  return <ViewerView reels={filtered} cls={cls} chapter={chapter} />;
+}
+
+// ─── Loading screen ──────────────────────────────────────────────────────────
+function LoadingScreen() {
+  return (
+    <div className="flex items-center justify-center bg-black" style={{ width: "100vw", height: "100dvh" }}>
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-slate-400 text-sm">Loading…</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── View 1: Class selection ─────────────────────────────────────────────────
+function ClassSelectView({ reels }: { reels: Reel[] }) {
+  const classes = sortClasses([...new Set(reels.map((r) => r.class))]);
+
+  const countFor = (cls: string) => reels.filter((r) => r.class === cls).length;
+  const chaptersFor = (cls: string) =>
+    new Set(reels.filter((r) => r.class === cls).map((r) => r.chapter)).size;
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      {/* Header */}
+      <div className="sticky top-0 z-10 px-4 pt-10 pb-4" style={{ background: "rgba(0,0,0,0.9)", backdropFilter: "blur(12px)" }}>
+        <div className="flex items-center justify-between mb-1">
+          <Link href="/" className="text-white/70 text-sm">← Home</Link>
+          <Link href="/reels/upload" className="text-white/70 text-sm">+ Upload</Link>
+        </div>
+        <h1 className="text-2xl font-bold mt-3">Study Reels</h1>
+        <p className="text-white/50 text-sm mt-1">Pick your class</p>
+      </div>
+
+      {classes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center px-6 py-24">
+          <div className="text-6xl mb-5">🎬</div>
+          <h2 className="text-xl font-bold mb-2">No reels yet</h2>
+          <p className="text-white/50 text-sm text-center mb-8 max-w-xs">Teachers can upload short lessons from the upload page.</p>
+          <Link href="/reels/upload" className="py-3 px-8 bg-white text-black font-bold rounded-2xl">Upload First Reel</Link>
+        </div>
+      ) : (
+        <div className="px-4 pb-10 grid grid-cols-2 gap-3 mt-4">
+          {classes.map((cls) => (
+            <Link
+              key={cls}
+              href={`/reels?cls=${encodeURIComponent(cls)}`}
+              className="relative rounded-2xl overflow-hidden flex flex-col justify-between p-4"
+              style={{ background: "linear-gradient(135deg, #1e1e2e 0%, #16213e 100%)", minHeight: "120px", border: "1px solid rgba(255,255,255,0.08)" }}
+            >
+              <div className="text-3xl font-black text-white/10 absolute top-2 right-3 select-none">
+                {cls.replace(/\D/g, "")}
+              </div>
+              <div>
+                <div className="text-lg font-bold">{cls}</div>
+                <div className="text-white/50 text-xs mt-0.5">{chaptersFor(cls)} chapters</div>
+              </div>
+              <div className="flex items-center gap-1.5 mt-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                <span className="text-white/60 text-xs">{countFor(cls)} reels</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── View 2: Chapter selection ───────────────────────────────────────────────
+function ChapterSelectView({ reels, cls }: { reels: Reel[]; cls: string }) {
+  const classReels = reels.filter((r) => r.class === cls);
+
+  // Group: subject → Set of chapters (preserve first-seen order)
+  const subjectChapters = new Map<string, string[]>();
+  for (const r of classReels) {
+    if (!subjectChapters.has(r.subject)) subjectChapters.set(r.subject, []);
+    const arr = subjectChapters.get(r.subject)!;
+    if (!arr.includes(r.chapter)) arr.push(r.chapter);
+  }
+
+  const countFor = (chapter: string) => classReels.filter((r) => r.chapter === chapter).length;
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      {/* Header */}
+      <div className="sticky top-0 z-10 px-4 pt-10 pb-4" style={{ background: "rgba(0,0,0,0.9)", backdropFilter: "blur(12px)" }}>
+        <div className="flex items-center justify-between mb-1">
+          <Link href="/reels" className="text-white/70 text-sm">← Classes</Link>
+          <Link href="/reels/upload" className="text-white/70 text-sm">+ Upload</Link>
+        </div>
+        <h1 className="text-2xl font-bold mt-3">{cls}</h1>
+        <p className="text-white/50 text-sm mt-1">Pick a chapter</p>
+      </div>
+
+      <div className="px-4 pb-10 mt-2 space-y-6">
+        {[...subjectChapters.entries()].map(([subject, chapters]) => (
+          <div key={subject}>
+            {/* Subject label */}
+            <div className="flex items-center gap-2 mb-3">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                style={{ background: subjectColor(subject) }}
+              >
+                {subject.charAt(0)}
+              </div>
+              <span className="font-semibold text-sm">{subject}</span>
+            </div>
+
+            {/* Chapter cards */}
+            <div className="space-y-2">
+              {chapters.map((chapter) => (
+                <Link
+                  key={chapter}
+                  href={`/reels?cls=${encodeURIComponent(cls)}&chapter=${encodeURIComponent(chapter)}`}
+                  className="flex items-center justify-between rounded-xl px-4 py-3.5"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.07)" }}
+                >
+                  <div className="flex-1 min-w-0 pr-3">
+                    <p className="text-sm font-medium leading-snug">{chapter}</p>
+                    <p className="text-white/40 text-xs mt-0.5">{countFor(chapter)} reel{countFor(chapter) !== 1 ? "s" : ""}</p>
+                  </div>
+                  <svg className="w-4 h-4 text-white/30 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── View 3: Full-screen TikTok viewer ───────────────────────────────────────
+function ViewerView({ reels, cls, chapter }: { reels: Reel[]; cls: string; chapter: string }) {
+  const [index, setIndex] = useState(0);
+  const [animDir, setAnimDir] = useState<"up" | "down" | null>(null);
+  const [animating, setAnimating] = useState(false);
+  const [muted, setMuted] = useState(true);
+  const [isTeacher, setIsTeacher] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePin, setDeletePin] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [reelList, setReelList] = useState<Reel[]>(reels);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => { if (data.user?.role === "teacher") setIsTeacher(true); })
+      .catch(() => {});
+  }, []);
 
   async function handleDelete() {
     if (deletePin.length < 4) return;
@@ -68,12 +244,12 @@ export default function ReelsPage() {
       const res = await fetch("/api/reels/delete", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: reels[index].id, pin: deletePin }),
+        body: JSON.stringify({ id: reelList[index].id, pin: deletePin }),
       });
       const data = await res.json();
       if (!res.ok) { setDeleteError(data.error || "Failed to delete."); setDeleting(false); return; }
-      const updated = reels.filter((_, i) => i !== index);
-      setReels(updated);
+      const updated = reelList.filter((_, i) => i !== index);
+      setReelList(updated);
       setIndex(Math.min(index, updated.length - 1));
       setShowDeleteModal(false);
       setDeletePin("");
@@ -88,12 +264,9 @@ export default function ReelsPage() {
     (dir: "up" | "down") => {
       if (animating) return;
       const next = dir === "down" ? index + 1 : index - 1;
-      if (next < 0 || next >= reels.length) return;
-
-      // Pause current video immediately to prevent dual audio
+      if (next < 0 || next >= reelList.length) return;
       const v = videoRef.current;
       if (v) v.pause();
-
       setAnimDir(dir);
       setAnimating(true);
       setTimeout(() => {
@@ -102,7 +275,7 @@ export default function ReelsPage() {
         setAnimating(false);
       }, 300);
     },
-    [animating, index, reels.length]
+    [animating, index, reelList.length]
   );
 
   useEffect(() => {
@@ -115,46 +288,29 @@ export default function ReelsPage() {
   }, [navigate]);
 
   const touchY = useRef(0);
-  function onTouchStart(e: React.TouchEvent) {
-    touchY.current = e.touches[0].clientY;
-  }
+  function onTouchStart(e: React.TouchEvent) { touchY.current = e.touches[0].clientY; }
   function onTouchEnd(e: React.TouchEvent) {
     const delta = touchY.current - e.changedTouches[0].clientY;
     if (Math.abs(delta) > 45) navigate(delta > 0 ? "down" : "up");
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center bg-black" style={{ width: "100vw", height: "100dvh" }}>
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-slate-400 text-sm">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (reels.length === 0) {
+  if (reelList.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center bg-black text-white px-6" style={{ width: "100vw", height: "100dvh" }}>
-        <div className="text-6xl mb-5">🎬</div>
-        <h2 className="text-xl font-bold mb-2">No reels yet</h2>
-        <p className="text-slate-400 text-sm text-center mb-8 max-w-xs">
-          Teachers can upload short lessons from the upload page
-        </p>
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-          <Link href="/reels/upload" className="py-3 bg-white text-black font-bold rounded-2xl text-center">
-            Upload First Reel
-          </Link>
-          <Link href="/" className="py-3 bg-white/10 text-white rounded-2xl text-center">
-            ← Home
-          </Link>
-        </div>
+        <div className="text-5xl mb-4">📭</div>
+        <h2 className="text-xl font-bold mb-2">No reels here</h2>
+        <p className="text-white/50 text-sm text-center mb-8 max-w-xs">No reels uploaded for this chapter yet.</p>
+        <Link
+          href={`/reels?cls=${encodeURIComponent(cls)}`}
+          className="py-3 px-8 bg-white/10 text-white rounded-2xl text-sm"
+        >
+          ← Back to chapters
+        </Link>
       </div>
     );
   }
 
-  const reel = reels[index];
+  const reel = reelList[index];
   const translateY = animDir === "down" ? "-100%" : animDir === "up" ? "100%" : "0%";
 
   return (
@@ -164,7 +320,7 @@ export default function ReelsPage() {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* ── Full-screen media ── */}
+      {/* Full-screen media */}
       <div
         className="absolute inset-0"
         style={{
@@ -175,13 +331,18 @@ export default function ReelsPage() {
         <ReelMedia reel={reel} muted={muted} videoRef={videoRef} />
       </div>
 
-      {/* ── Top gradient + nav ── */}
+      {/* Top gradient + nav */}
       <div
         className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 pt-10 pb-8"
         style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)" }}
       >
-        <Link href="/" className="text-white/90 text-sm font-medium">← Home</Link>
-        <span className="text-white font-bold text-base tracking-wide">Study Reels</span>
+        <Link
+          href={`/reels?cls=${encodeURIComponent(cls)}`}
+          className="text-white/90 text-sm font-medium"
+        >
+          ← {cls}
+        </Link>
+        <span className="text-white font-semibold text-sm text-center max-w-[160px] truncate">{chapter}</span>
         <div className="flex items-center gap-3">
           <Link href="/reels/liked" className="text-red-400 text-sm font-medium flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
@@ -193,7 +354,7 @@ export default function ReelsPage() {
         </div>
       </div>
 
-      {/* ── Delete PIN modal ── */}
+      {/* Delete PIN modal */}
       {showDeleteModal && (
         <div className="absolute inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.75)" }}>
           <div className="bg-zinc-900 rounded-2xl p-6 mx-6 w-full max-w-xs">
@@ -231,26 +392,25 @@ export default function ReelsPage() {
         </div>
       )}
 
-      {/* ── Right action buttons (absolutely positioned) ── */}
+      {/* Right action buttons */}
       <div className="absolute right-3 z-30 flex flex-col items-center gap-5" style={{ bottom: "120px" }}>
         <ActionButtons reel={reel} />
-        {/* Delete (PIN-protected) */}
-        <button
-          onClick={() => setShowDeleteModal(true)}
-          className="flex flex-col items-center gap-1 cursor-pointer"
-        >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(239,68,68,0.2)" }}>
-            <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </div>
-          <span className="text-red-400 text-xs">Delete</span>
-        </button>
+        {/* Delete (teacher only) */}
+        {isTeacher && (
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="flex flex-col items-center gap-1 cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(239,68,68,0.2)" }}>
+              <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <span className="text-red-400 text-xs">Delete</span>
+          </button>
+        )}
         {/* Mute */}
-        <button
-          onClick={() => setMuted((m) => !m)}
-          className="flex flex-col items-center gap-1 cursor-pointer"
-        >
+        <button onClick={() => setMuted((m) => !m)} className="flex flex-col items-center gap-1 cursor-pointer">
           <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.15)" }}>
             {muted ? (
               <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -276,12 +436,12 @@ export default function ReelsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
             </svg>
           </button>
-          <span className="text-white/50 text-xs font-medium">{index + 1}/{reels.length}</span>
+          <span className="text-white/50 text-xs font-medium">{index + 1}/{reelList.length}</span>
           <button
             onClick={() => navigate("down")}
-            disabled={index === reels.length - 1}
+            disabled={index === reelList.length - 1}
             className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
-            style={{ background: "rgba(255,255,255,0.15)", opacity: index === reels.length - 1 ? 0.3 : 1 }}
+            style={{ background: "rgba(255,255,255,0.15)", opacity: index === reelList.length - 1 ? 0.3 : 1 }}
           >
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -290,12 +450,11 @@ export default function ReelsPage() {
         </div>
       </div>
 
-      {/* ── Bottom gradient + info ── */}
+      {/* Bottom gradient + info */}
       <div
         className="absolute bottom-0 left-0 right-0 z-20 px-4 pb-8 pt-20"
         style={{ background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)" }}
       >
-        {/* Leave space for right buttons */}
         <div className="pr-20">
           <div className="flex items-center gap-2.5 mb-2">
             <div
@@ -331,7 +490,7 @@ export default function ReelsPage() {
   );
 }
 
-// ─── Media player ───────────────────────────────────────
+// ─── Media player ────────────────────────────────────────────────────────────
 function ReelMedia({
   reel,
   muted,
@@ -396,14 +555,13 @@ function ReelMedia({
   );
 }
 
-// ─── Like button ────────────────────────────────────────
+// ─── Like button ─────────────────────────────────────────────────────────────
 function ActionButtons({ reel }: { reel: Reel }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [bouncing, setBouncing] = useState(false);
 
   useEffect(() => {
-    // Optimistic load from localStorage, then sync with DB
     setLiked(!!localStorage.getItem("reel_liked_" + reel.id));
     setLikeCount(parseInt(localStorage.getItem("reel_likes_" + reel.id) || "0", 10));
 
@@ -413,11 +571,8 @@ function ActionButtons({ reel }: { reel: Reel }) {
         if (typeof data.count === "number") setLikeCount(data.count);
         if (typeof data.liked === "boolean") {
           setLiked(data.liked);
-          if (data.liked) {
-            localStorage.setItem("reel_liked_" + reel.id, "1");
-          } else {
-            localStorage.removeItem("reel_liked_" + reel.id);
-          }
+          if (data.liked) localStorage.setItem("reel_liked_" + reel.id, "1");
+          else localStorage.removeItem("reel_liked_" + reel.id);
         }
       })
       .catch(() => {});
@@ -426,14 +581,10 @@ function ActionButtons({ reel }: { reel: Reel }) {
   async function toggleLike() {
     setBouncing(true);
     setTimeout(() => setBouncing(false), 300);
-
-    // Optimistic update
     const next = !liked;
     const newCount = next ? likeCount + 1 : Math.max(0, likeCount - 1);
     setLiked(next);
     setLikeCount(newCount);
-
-    // Sync to DB
     try {
       const res = await fetch("/api/reels/likes", {
         method: "POST",
@@ -444,12 +595,9 @@ function ActionButtons({ reel }: { reel: Reel }) {
       if (typeof data.count === "number") setLikeCount(data.count);
       if (typeof data.liked === "boolean") setLiked(data.liked);
     } catch {
-      // revert on failure
       setLiked(!next);
       setLikeCount(likeCount);
     }
-
-    // Keep localStorage in sync for liked page (offline/fast access)
     if (next) {
       localStorage.setItem("reel_liked_" + reel.id, "1");
       const ids: string[] = JSON.parse(localStorage.getItem("liked_reel_ids") || "[]");
