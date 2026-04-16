@@ -288,6 +288,18 @@ function ViewerView({ reels, cls, chapter }: { reels: Reel[]; cls: string; chapt
   }, [navigate]);
 
   const touchY = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Attach non-passive touchmove so we can call preventDefault and block
+  // the browser's pull-to-refresh when swiping down to go to the previous reel.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    function onMove(e: TouchEvent) { e.preventDefault(); }
+    el.addEventListener("touchmove", onMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onMove);
+  }, []);
+
   function onTouchStart(e: React.TouchEvent) { touchY.current = e.touches[0].clientY; }
   function onTouchEnd(e: React.TouchEvent) {
     const delta = touchY.current - e.changedTouches[0].clientY;
@@ -315,6 +327,7 @@ function ViewerView({ reels, cls, chapter }: { reels: Reel[]; cls: string; chapt
 
   return (
     <div
+      ref={containerRef}
       className="relative overflow-hidden bg-black"
       style={{ width: "100vw", height: "100dvh" }}
       onTouchStart={onTouchStart}
