@@ -97,6 +97,21 @@ function LoadingScreen() {
 // ─── View 1: Class selection ─────────────────────────────────────────────────
 function ClassSelectView({ reels }: { reels: Reel[] }) {
   const classes = sortClasses([...new Set(reels.map((r) => r.class))]);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+
+  useEffect(() => {
+    // Show banner only in browser (not already installed as PWA)
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+    const dismissed = localStorage.getItem("install_banner_dismissed");
+    if (!isStandalone && !dismissed) setShowInstallBanner(true);
+  }, []);
+
+  function dismissBanner() {
+    localStorage.setItem("install_banner_dismissed", "1");
+    setShowInstallBanner(false);
+  }
 
   const countFor = (cls: string) => reels.filter((r) => r.class === cls).length;
   const chaptersFor = (cls: string) =>
@@ -113,6 +128,18 @@ function ClassSelectView({ reels }: { reels: Reel[] }) {
         <h1 className="text-2xl font-bold mt-3">Study Reels</h1>
         <p className="text-white/50 text-sm mt-1">Pick your class</p>
       </div>
+
+      {/* Install PWA banner */}
+      {showInstallBanner && (
+        <div className="mx-4 mt-3 rounded-2xl px-4 py-3 flex items-center gap-3" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }}>
+          <span className="text-xl">📲</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-xs font-semibold">Add to Home Screen</p>
+            <p className="text-white/50 text-xs mt-0.5">Install the app to hide the browser bar and go full-screen.</p>
+          </div>
+          <button onClick={dismissBanner} className="text-white/40 text-lg leading-none px-1">✕</button>
+        </div>
+      )}
 
       {classes.length === 0 ? (
         <div className="flex flex-col items-center justify-center px-6 py-24">
