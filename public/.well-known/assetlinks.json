@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.zuplerno_app.twa",
+      "sha256_cert_fingerprints": [
+        "F8:2E:89:D6:3D:25:2B:AB:8F:00:2B:C6:65:96:BB:BE:6D:C7:4A:B7:A6:63:CD:61:AC:ED:D2:57:60:9E:E2:C4"
+      ]
+    }
+  }
+]
