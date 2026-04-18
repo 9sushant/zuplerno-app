@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "com.zuplerno.app",
       "sha256_cert_fingerprints": [
-        "CA:FD:14:32:C3:BD:36:76:BD:69:0F:01:DA:A4:DD:FC:9C:09:0D:39:20:2B:17:00:9A:2C:28:03:7E:B3:42:99"
+        "CA:FD:14:32:C3:BD:36:76:BD:69:0F:01:DA:A4:DD:FC:9C:09:0D:39:20:2B:17:00:9A:2C:28:03:7E:B3:42:99",
+        "AB:DE:16:87:00:A2:89:9E:F8:89:D6:AF:EC:59:61:2F:74:CC:23:54:7C:AB:AE:EE:15:70:2B:5C:14:9B:B4:AB"
       ]
     }
   }
